@@ -6,17 +6,28 @@ import (
 
 	"github.com/DavidGenZ/fazt-go-api/db"
 	"github.com/DavidGenZ/fazt-go-api/models"
+	"github.com/gorilla/mux"
 )
 
 func GetUsersHandler(w http.ResponseWriter, r *http.Request) {
 	
 	var users []models.User
 	db.DB.Find(&users)
-
 	json.NewEncoder(w).Encode(&users)
 }
 func GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get one user"))
+	var user models.User
+	params := mux.Vars(r)
+	db.DB.First(&user, params["id"])
+
+	if user.ID == 0 {
+		w.WriteHeader(http.StatusNotFound) //404
+		w.Write([]byte("User not Found"))
+		return
+	}
+
+	db.DB.Model(&user).Association("Tasks").Find(&user.Tasks)
+	json.NewEncoder(w).Encode(&user)
 }
 func PostUserHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -34,5 +45,18 @@ func PostUserHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode((&user))
 }
 func DeleteUsersHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Delete"))
+	var user models.User
+	params := mux.Vars(r)
+
+	db.DB.First(&user, params["id"])
+
+	if user.ID == 0 {
+		w.WriteHeader(http.StatusNotFound) //404
+		w.Write([]byte("User not Found"))
+		return
+	}
+
+	db.DB.Delete(&user) //cambiar de estado
+	//db.DB.Unscoped().Delete(&user) //eliminar permanentemente
+	w.WriteHeader(http.StatusOK)
 }
